@@ -21,13 +21,15 @@ class CompetitionType(str, enum.Enum):
 
 class PositionGroup(str, enum.Enum):
     """
-    Broad categories for ML partitioning.
-    We force every player into one of these 4 buckets for the 'Objective Quality' model.
+    Refined categories for ML partitioning.
+    Aligns with FotMob/FBref comparisons for fairer 'Gem Scores'.
     """
     GOALKEEPER = "Goalkeeper"
-    DEFENDER = "Defender"
-    MIDFIELDER = "Midfielder"
-    ATTACKER = "Attacker"
+    CENTRE_BACK = "Centre-Back"        # CB
+    FULL_BACK = "Full-Back"            # LB, RB, LWB, RWB
+    MIDFIELDER = "Midfielder"          # CDM, CM 
+    WINGER_AM = "Winger_AM"            # LW, RW, CAM, #10s 
+    STRIKER = "Striker"                # CF, ST 
 
 class Country(Base):
     __tablename__ = "countries"
