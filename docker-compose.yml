@@ -1,0 +1,16 @@
+services:
+  db:
+    image: pgvector/pgvector:pg16  # The specific software version to download
+    container_name: gem_db
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "5432:5432"  # Open port 5432 so your Python code can talk to it
+    volumes:
+      - postgres_data:/var/lib/postgresql/data # Save data to your hard drive
+
+volumes:
+  postgres_data:

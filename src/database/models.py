@@ -36,6 +36,8 @@ class Country(Base):
     name: Mapped[str] = mapped_column(String(100), unique=True)
     iso_code: Mapped[str] = mapped_column(String(3)) 
     continent: Mapped[str] = mapped_column(String(20))
+
+    flag_url: Mapped[Optional[str]] = mapped_column(String(255)) # New
     
     competitions: Mapped[List["Competition"]] = relationship(back_populates="country")
     teams: Mapped[List["Team"]] = relationship(back_populates="country")
@@ -58,6 +60,8 @@ class Competition(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(100))
     type: Mapped[CompetitionType] = mapped_column(Enum(CompetitionType))
+
+    logo_url: Mapped[Optional[str]] = mapped_column(String(255)) # New
     
     country_id: Mapped[Optional[int]] = mapped_column(ForeignKey("countries.id"))
     continent: Mapped[Optional[str]] = mapped_column(String(20))
@@ -75,6 +79,9 @@ class Team(Base):
     name: Mapped[str] = mapped_column(String(100))
     country_id: Mapped[int] = mapped_column(ForeignKey("countries.id"))
     is_national_team: Mapped[bool] = mapped_column(Boolean, default=False)
+
+    logo_url: Mapped[Optional[str]] = mapped_column(String(255)) # New
+    fotmob_id: Mapped[Optional[int]] = mapped_column(Integer, index=True)
     
     country: Mapped["Country"] = relationship(back_populates="teams")
     season_history: Mapped[List["TeamSeasonContext"]] = relationship(back_populates="team")
@@ -104,6 +111,9 @@ class Player(Base):
     name: Mapped[str] = mapped_column(String(100))
     birth_date: Mapped[date] = mapped_column(Date)
     nationality_id: Mapped[int] = mapped_column(ForeignKey("countries.id"))
+
+    image_url: Mapped[Optional[str]] = mapped_column(String(255)) # New
+    fotmob_id: Mapped[Optional[int]] = mapped_column(Integer, index=True)
 
     position_group: Mapped[PositionGroup] = mapped_column(Enum(PositionGroup))
     specific_positions: Mapped[List[str]] = mapped_column(ARRAY(String), default=[])

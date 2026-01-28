@@ -5,6 +5,19 @@ build/
 dist/
 wheels/
 *.egg-info
+.pytest_cache/
 
 # Virtual environments
-.venv
+.venv/
+venv/
+env/
+
+# Security
+.env
+.env.local
+secrets.json
+
+# --- Docker & Database ---
+# Ignore the actual database files stored on your hard drive
+postgres_data/
+docker-compose.override.yml
