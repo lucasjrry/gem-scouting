@@ -117,6 +117,10 @@ class Player(Base):
 
     position_group: Mapped[PositionGroup] = mapped_column(Enum(PositionGroup))
     specific_positions: Mapped[List[str]] = mapped_column(ARRAY(String), default=[])
+
+    height_cm: Mapped[Optional[int]] = mapped_column(Integer) 
+    preferred_foot: Mapped[Optional[str]] = mapped_column(String(10)) # "left", "right"
+    contract_expiry: Mapped[Optional[date]] = mapped_column(Date)
     
     # ML: The core quality vector
     ability_vector: Mapped[Optional[List[float]]] = mapped_column(Vector(64))
@@ -142,6 +146,15 @@ class PlayerSeasonStat(Base):
     minutes: Mapped[int] = mapped_column(Integer)
     goals: Mapped[int] = mapped_column(Integer)
     assists: Mapped[int] = mapped_column(Integer)
+
+    # "Moneyball" stats that are critical enough to be columns
+    xg: Mapped[Optional[float]] = mapped_column(Float) # Expected Goals
+    xa: Mapped[Optional[float]] = mapped_column(Float) # Expected Assists
+    rating: Mapped[Optional[float]] = mapped_column(Float) # Average Match Rating
+    
+    # Discipline is common enough to keep explicit
+    yellow_cards: Mapped[int] = mapped_column(Integer, default=0)
+    red_cards: Mapped[int] = mapped_column(Integer, default=0)
     
     # Flexible storage for advanced metrics (xG, pressures, etc.)
     detailed_stats: Mapped[dict] = mapped_column(JSONB, default={})
