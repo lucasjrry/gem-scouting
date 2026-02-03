@@ -5,7 +5,7 @@ import enum
 
 from sqlalchemy import (
     String, Integer, Float, Boolean, Date, DateTime, 
-    ForeignKey, UniqueConstraint, Index, Enum
+    ForeignKey, UniqueConstraint, Index, Enum, CheckConstraint
 )
 from sqlalchemy.dialects.postgresql import JSONB, ARRAY, UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -30,6 +30,17 @@ class PositionGroup(str, enum.Enum):
     MIDFIELDER = "Midfielder"          # CDM, CM 
     WINGER_AM = "Winger_AM"            # LW, RW, CAM, #10s 
     STRIKER = "Striker"                # CF, ST 
+
+class InternationalLevel(enum.Enum):
+    SENIOR = "Senior"
+    U23 = "U23" # Olympic
+    U21 = "U21"
+    U20 = "U20"
+    U19 = "U19"
+    U18 = "U18"
+    U17 = "U17"
+    U16 = "U16"
+    U15 = "U15"
 
 class Country(Base):
     __tablename__ = "countries"
@@ -81,6 +92,7 @@ class Team(Base):
     name: Mapped[str] = mapped_column(String(100))
     country_id: Mapped[int] = mapped_column(ForeignKey("countries.id"))
     is_national_team: Mapped[bool] = mapped_column(Boolean, default=False)
+    current_competition_id: Mapped[Optional[int]] = mapped_column(ForeignKey("competitions.id"))
 
     logo_url: Mapped[Optional[str]] = mapped_column(String(255)) # New
     fotmob_id: Mapped[Optional[int]] = mapped_column(Integer, index=True)
@@ -88,6 +100,7 @@ class Team(Base):
     country: Mapped["Country"] = relationship(back_populates="teams")
     season_history: Mapped[List["TeamSeasonContext"]] = relationship(back_populates="team")
     players: Mapped[List["PlayerSeasonStat"]] = relationship(back_populates="team")
+    current_competition: Mapped["Competition"] = relationship(foreign_keys=[current_competition_id])
 
 class TeamSeasonContext(Base):
     """Tracks which league a team was in for a specific season."""
@@ -113,6 +126,7 @@ class Player(Base):
     name: Mapped[str] = mapped_column(String(100))
     birth_date: Mapped[date] = mapped_column(Date)
     nationality_id: Mapped[int] = mapped_column(ForeignKey("countries.id"))
+    current_team_id: Mapped[Optional[int]] = mapped_column(ForeignKey("teams.id"))
 
     image_url: Mapped[Optional[str]] = mapped_column(String(255)) # New
     fotmob_id: Mapped[Optional[int]] = mapped_column(Integer, index=True)
@@ -134,6 +148,15 @@ class Player(Base):
     nationality_country: Mapped["Country"] = relationship(back_populates="players")
     stats: Mapped[List["PlayerSeasonStat"]] = relationship(back_populates="player")
     transfers: Mapped[List["Transfer"]] = relationship(back_populates="player")
+    current_team: Mapped["Team"] = relationship(foreign_keys=[current_team_id])
+    international_stats: Mapped[List["PlayerInternationalStat"]] = relationship(back_populates="player")
+
+    __table_args__ = (
+        # 1. Hard constraint: No two players can share the same FotMob ID
+        UniqueConstraint('fotmob_id', name='_fotmob_player_uc'),
+        # 2. Index for fast lookup by
+        Index('idx_player_lookup', 'name', 'nationality_id'),
+    )
 
 class PlayerSeasonStat(Base):
     """Aggregated Season Data (Macro View)"""
@@ -163,6 +186,14 @@ class PlayerSeasonStat(Base):
     
     player: Mapped["Player"] = relationship(back_populates="stats")
     team: Mapped["Team"] = relationship(back_populates="players")
+
+    __table_args__ = (
+        # Ensure a player has only ONE stats row per Team+Competition+Season
+        UniqueConstraint('player_id', 'team_id', 'competition_id', 'season_id', name='_player_season_stat_uc'),
+        
+        # Speed up the "Show me Player X's history" query
+        Index('idx_player_history', 'player_id', 'season_id'),
+    )
 
 
 class Transfer(Base):
@@ -247,3 +278,38 @@ class TeamMatchResult(Base):
     team: Mapped["Team"] = relationship(foreign_keys=[team_id])
     opponent: Mapped["Team"] = relationship(foreign_keys=[opponent_id])
     competition: Mapped["Competition"] = relationship()
+
+    __table_args__ = (
+        # 1. Sanity Check: Team cannot play opponent with same ID
+        CheckConstraint('team_id != opponent_id', name='check_team_vs_opponent'),
+        
+        # 2. No Duplicates: A team can't have two results vs same opponent on same day
+        UniqueConstraint('team_id', 'opponent_id', 'date', name='_team_match_result_uc'),
+    )
+
+
+class PlayerInternationalStat(Base):
+    """
+    Summary Stats for International Career.
+    Separated from SeasonStats because international 'seasons' are age-bound.
+    """
+    __tablename__ = "player_international_stats"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    
+    player_id: Mapped[int] = mapped_column(ForeignKey("players.id"), nullable=False)  
+    level: Mapped[InternationalLevel] = mapped_column(Enum(InternationalLevel), nullable=False)
+    country_id: Mapped[int] = mapped_column(ForeignKey("countries.id"), nullable=False)
+
+    caps: Mapped[int] = mapped_column(Integer, default=0)
+    goals: Mapped[int] = mapped_column(Integer, default=0)
+
+    years_active: Mapped[Optional[str]] = mapped_column(String(20))
+
+    player: Mapped["Player"] = relationship(back_populates="international_stats")
+    country: Mapped["Country"] = relationship()
+
+    # Constraint: A player can only have ONE summary row per level per country
+    __table_args__ = (
+        UniqueConstraint('player_id', 'level', 'country_id', name='_player_level_country_uc'),
+    )
